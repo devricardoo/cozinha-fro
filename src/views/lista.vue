@@ -1,17 +1,26 @@
 <template>
   <v-container>
-    <v-card class="mx-auto mt-3" max-width="600">
-      <v-card-title>
+    <v-card class="mx-auto mt-3" max-width="500">
+      <v-card-title class="text-center">
         Lista de Produtos
         <v-spacer></v-spacer>
       </v-card-title>
-
       <v-divider></v-divider>
-
-      <v-table>
-        <thead></thead>
+      <v-table class="ml-2">
+        <thead>
+          <tr>
+            <th>
+              <strong>Data</strong>
+            </th>
+            <th>
+              <strong>Nome</strong>
+            </th>
+            <th></th>
+          </tr>
+        </thead>
         <tbody>
           <tr v-for="nome in produtosPaginados" :key="nome.id">
+            <td>{{ new Date(nome.created_at).toLocaleDateString() }}</td>
             <td>{{ nome.produto_nome }}</td>
             <td class="text-right">
               <v-btn variant="text" @click="abrirEdicao(nome, index)">
@@ -37,9 +46,14 @@
     <!-- Modal para adicionar nome -->
     <v-dialog v-model="abrirLista" max-width="400">
       <v-card>
-        <v-card-title>Adicionar Nome</v-card-title>
+        <v-card-title>Adicionar produto</v-card-title>
         <v-card-text>
-          <v-text-field v-model="novoNome" label="Nome" outlined></v-text-field>
+          <v-text-field
+            v-model="novoNome"
+            :rules="rules.nome"
+            label="Produto"
+            outlined
+          ></v-text-field>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -72,12 +86,20 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "../axios";
+
+const nomeRules = [
+  (value) => !!value || "Informe um produto.",
+  (value) => value.length >= 3 || "O produto deve ter pelo menos 3 caracteres.",
+];
 
 export default {
   data() {
     return {
       nomes: [],
+      rules: {
+        nome: nomeRules,
+      },
       abrirLista: false,
       editIndex: null,
       editItem: {},
@@ -107,20 +129,10 @@ export default {
   },
   methods: {
     salvarEdicao() {
-      axios
-        .put(
-          `http://localhost:8000/api/cozinha/cadproduto/${this.editItem.id}`,
-          {
-            produto_nome: this.editItem.produto_nome,
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        )
+      api
+        .put(`/cozinha/cadproduto/${this.editItem.id}`, {
+          produto_nome: this.editItem.produto_nome,
+        })
         .then(() => {
           this.dialogEditar = false;
           this.buscarNomes();
@@ -131,14 +143,12 @@ export default {
     },
 
     buscarNomes() {
-      axios
-        .get("http://localhost:8000/api/cozinha/cadproduto/", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        })
+      api
+        .get("/cozinha/cadproduto/")
         .then((response) => {
-          this.nomes = response.data;
+          this.nomes = response.data.sort((a, b) => {
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
         })
         .catch((error) => {
           console.error("Erro ao buscar nomes:", error);
@@ -150,20 +160,10 @@ export default {
       this.dialogEditar = true;
     },
     adicionarNomeProduto() {
-      axios
-        .post(
-          "http://localhost:8000/api/cozinha/cadproduto",
-          {
-            produto_nome: this.novoNome,
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        )
+      api
+        .post("/cozinha/cadproduto", {
+          produto_nome: this.novoNome,
+        })
         .then((response) => {
           this.nomes.push(response.data);
           this.abrirLista = false;
@@ -176,19 +176,6 @@ export default {
   },
   mounted() {
     this.buscarNomes();
-    axios
-      .get("http://localhost:8000/api/cozinha/cadproduto/", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
-
-      .then((response) => {
-        this.nomes = response.data;
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar nomes:", error);
-      });
   },
 };
 </script>

@@ -137,12 +137,14 @@
           <form @submit.prevent>
             <v-text-field
               v-model="editItem.data"
+              :rules="rules.date"
               label="Data"
               type="date"
             ></v-text-field>
             <v-select
               v-model="editItem.produto_id"
               :items="produtosFormatados"
+              :rules="rules.produto"
               item-value="value"
               item-title="text"
               label="Produto"
@@ -152,11 +154,13 @@
 
             <v-text-field
               v-model="editItem.quantidade"
+              :rules="rules.quantidade"
               label="Quantidade"
               type="number"
             ></v-text-field>
             <v-text-field
               v-model="editItem.descricao"
+              :rules="rules.descricao"
               label="Descrição"
             ></v-text-field>
             <v-btn color="green" text @click="salvarEdicao">Salvar</v-btn>
@@ -193,7 +197,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "../axios";
 import lista from "./lista.vue";
 
 const dateRules = [(value) => !!value || "A data precisa ser informada."];
@@ -276,7 +280,7 @@ export default {
       this.dialogExcluir = true;
     },
     atualizarProdutosEdicao() {
-      axios
+      api
         .get("http://localhost:8000/api/cozinha/produto", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -292,33 +296,37 @@ export default {
         });
     },
     salvarEdicao() {
-      axios
-        .put(
-          `http://localhost:8000/api/cozinha/produto/${this.editItem.id}`,
-          {
-            data: this.editItem.data,
-            produto_id: this.editItem.produto_id,
-            quantidade: Number(this.editItem.quantidade),
-            descricao: this.editItem.descricao,
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+      this.$refs.formEditar.validate().then((isValid) => {
+        if (!isValid) return;
+
+        api
+          .put(
+            `http://localhost:8000/api/cozinha/produto/${this.editItem.id}`,
+            {
+              data: this.editItem.data,
+              produto_id: this.editItem.produto_id,
+              quantidade: Number(this.editItem.quantidade),
+              descricao: this.editItem.descricao,
             },
-          }
-        )
-        .then(() => {
-          this.dialogEditar = false;
-          this.atualizarProdutosEdicao();
-        })
-        .catch((error) => {
-          console.error("Erro ao editar produto:", error);
-        });
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          )
+          .then(() => {
+            this.dialogEditar = false;
+            this.atualizarProdutosEdicao();
+          })
+          .catch((error) => {
+            console.error("Erro ao editar produto:", error);
+          });
+      });
     },
     confirmarExclusao() {
-      axios
+      api
         .delete(
           `http://localhost:8000/api/cozinha/produto/${this.deleteItem.id}`,
           {
@@ -339,7 +347,7 @@ export default {
       this.$refs.formAdicionar.validate().then((isValid) => {
         if (!isValid) return;
 
-        axios
+        api
           .post(
             "http://localhost:8000/api/cozinha/produto",
             {
@@ -357,7 +365,7 @@ export default {
             }
           )
           .then(() => {
-            return axios.get("http://localhost:8000/api/cozinha/produto", {
+            return api.get("http://localhost:8000/api/cozinha/produto", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
               },
@@ -385,7 +393,7 @@ export default {
   mounted() {
     this.atualizarProdutosEdicao();
 
-    axios
+    api
       .get("http://localhost:8000/api/cozinha/cadproduto", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
