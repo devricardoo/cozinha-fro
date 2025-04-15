@@ -98,7 +98,7 @@
               :rules="rules.produto"
               label="Produto"
               required
-              @update:modelValue="(val) => console.log('Selecionado:', val)"
+              @update:modelValue="(val) => atualizarQuantidadeMaxima(val)"
             ></v-select>
 
             <v-text-field
@@ -148,6 +148,7 @@
               item-value="value"
               item-title="text"
               label="Produto"
+              @update:modelValue="(val) => atualizarQuantidadeMaxima(val)"
               required
             >
             </v-select>
@@ -202,14 +203,6 @@ import lista from "./lista.vue";
 
 const dateRules = [(value) => !!value || "A data precisa ser informada."];
 
-const produtoRules = [(value) => !!value || "Escolha um produto."];
-
-const quantidadeRules = [
-  (value) => !!value || "A quantidade é obrigatória.",
-  (value) => value <= 99 || "A quantidade deve ser no máximo 99.",
-  (value) => value > 0 || "A quantidade deve ser maior que 0.",
-];
-
 const descricaoRules = [
   (value) => !!value || "A descrição é obrigatória.",
   (value) =>
@@ -220,16 +213,31 @@ export default {
   components: { lista },
   data() {
     return {
+      quantidadeMaxima: null,
       rules: {
         date: dateRules,
-        produto: produtoRules,
-        quantidade: quantidadeRules,
+        produto: [
+          (value) => !!value || "Escolha um produto.",
+          (value) => {
+            const existe = this.produtosListar.some(
+              (item) => item.produto_id === value
+            );
+            return !existe || "Este produto já foi adicionado.";
+          },
+        ],
+        quantidade: [
+          (value) => !!value || "A quantidade é obrigatória.",
+          (value) =>
+            !this.quantidadeMaxima ||
+            value <= this.quantidadeMaxima ||
+            `A quantidade deve ser no máximo ${this.quantidadeMaxima}.`,
+          (value) => value > 0 || "A quantidade deve ser maior que zero.",
+        ],
         descricao: descricaoRules,
       },
       produtosListar: [],
       produtosDisponiveis: [],
       produtosAPI: [],
-      dialogAdicionar: false,
       page: 1,
       itemsPerPage: 5,
       novoProduto: {
@@ -238,6 +246,7 @@ export default {
         quantidade: null,
         descricao: "",
       },
+      dialogAdicionar: false,
       dialogEditar: false,
       dialogExcluir: false,
       editItem: {},
@@ -270,6 +279,7 @@ export default {
       this.dialogAdicionar = true;
     },
     abrirEdicao(item, index) {
+      this.quantidadeMaxima = item.quantidade;
       this.editItem = JSON.parse(JSON.stringify(item));
       this.editIndex = index;
       this.dialogEditar = true;
@@ -388,6 +398,10 @@ export default {
             console.error("Erro ao adicionar item:", error.response?.data);
           });
       });
+    },
+    atualizarQuantidadeMaxima(id) {
+      const produto = this.produtosDisponiveis.find((p) => p.id === id);
+      this.quantidadeMaxima = produto ? produto.quantidade : null;
     },
   },
   mounted() {

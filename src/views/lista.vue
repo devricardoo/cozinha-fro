@@ -15,6 +15,7 @@
             <th>
               <strong>Nome</strong>
             </th>
+            <th>Quantidade</th>
             <th></th>
           </tr>
         </thead>
@@ -22,6 +23,7 @@
           <tr v-for="nome in produtosPaginados" :key="nome.id">
             <td>{{ new Date(nome.created_at).toLocaleDateString() }}</td>
             <td>{{ nome.produto_nome }}</td>
+            <td>{{ nome.quantidade }}</td>
             <td class="text-right">
               <v-btn variant="text" @click="abrirEdicao(nome, index)">
                 <v-icon>mdi-pencil</v-icon>
@@ -47,14 +49,30 @@
     <v-dialog v-model="abrirLista" max-width="400">
       <v-card>
         <v-card-title>Adicionar produto</v-card-title>
-        <v-card-text>
-          <v-text-field
-            v-model="novoNome"
-            :rules="rules.nome"
-            label="Produto"
-            outlined
-          ></v-text-field>
-        </v-card-text>
+
+        <v-form ref="formAdicionar" @submit.prevent>
+          <v-card-text>
+            <v-text-field
+              v-model="novoProduto.nome"
+              :rules="rules.produtoRules"
+              type="text"
+              required
+              label="Produto"
+              :error-messages="erroProdutoNome"
+              outlined
+            ></v-text-field>
+
+            <v-text-field
+              v-model="novoProduto.quantidade"
+              label="Quantidade"
+              :rules="rules.quantidade"
+              type="number"
+              outlined
+              :error-messages="erroQuantidade"
+              required
+            ></v-text-field>
+          </v-card-text>
+        </v-form>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="abrirLista = false">Cancelar</v-btn>
@@ -68,13 +86,24 @@
       <v-card>
         <v-card-title class="text-h5">Editar Produto</v-card-title>
         <v-card-text>
-          <form @submit.prevent>
+          <v-form ref="formEditar" @submit.prevent>
             <v-text-field
               v-model="editItem.produto_nome"
+              :rules="rules.produto"
               label="Produto"
+              type="text"
+              required
+            ></v-text-field>
+
+            <v-text-field
+              v-model="editItem.quantidade"
+              label="Quantidade"
+              :rules="rules.quantidade"
+              type="number"
+              required
             ></v-text-field>
             <v-btn color="green" text @click="salvarEdicao">Salvar</v-btn>
-          </form>
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -88,17 +117,30 @@
 <script>
 import api from "../axios";
 
-const nomeRules = [
-  (value) => !!value || "Informe um produto.",
-  (value) => value.length >= 3 || "O produto deve ter pelo menos 3 caracteres.",
+const quantidadeRules = [
+  (value) => !!value || "A quantidade é obrigatória.",
+  (value) => !isNaN(value) || "A quantidade deve ser um número.",
 ];
 
 export default {
   data() {
     return {
-      nomes: [],
+      produtosListar: [],
       rules: {
-        nome: nomeRules,
+        produtoRules: [
+          (value) => !!value || "Informe um produto.",
+          (value) =>
+            value.length >= 3 || "O produto deve ter pelo menos 3 caracteres.",
+          (value) => {
+            const existe = this.produtosListar.some(
+              (item) => item.produto_nome === value
+            );
+            return (
+              !existe || "O produto informado já existe na lista de produtos."
+            );
+          },
+        ],
+        quantidade: quantidadeRules,
       },
       abrirLista: false,
       editIndex: null,
@@ -107,46 +149,52 @@ export default {
       page: 1,
       itemsPerPage: 6,
       novoNome: "",
+      novoQuantidade: null,
       novoProduto: {
         nome: "",
+        quantidade: null,
       },
+      erroProdutoNome: "",
+      erroQuantidade: "",
     };
   },
   computed: {
     produtosPaginados() {
       const start = (this.page - 1) * this.itemsPerPage;
-      return this.nomes.slice(start, start + this.itemsPerPage);
+      return this.produtosListar.slice(start, start + this.itemsPerPage);
     },
     pageCount() {
-      return Math.ceil(this.nomes.length / this.itemsPerPage);
-    },
-    produtosFormatados() {
-      return this.nomes.map((item) => ({
-        text: item.produto_nome,
-        value: item.id,
-      }));
+      return Math.ceil(this.produtosListar.length / this.itemsPerPage);
     },
   },
   methods: {
     salvarEdicao() {
-      api
-        .put(`/cozinha/cadproduto/${this.editItem.id}`, {
-          produto_nome: this.editItem.produto_nome,
-        })
-        .then(() => {
-          this.dialogEditar = false;
-          this.buscarNomes();
-        })
-        .catch((error) => {
-          console.error("Erro ao editar produto:", error);
-        });
+      const form = this.$refs.formEditar;
+
+      if (form && form.validate()) {
+        api
+          .put(
+            `http://localhost:8000/api/cozinha/cadproduto/${this.editItem.id}`,
+            {
+              produto_nome: this.editItem.produto_nome,
+              quantidade: this.editItem.quantidade,
+            }
+          )
+          .then(() => {
+            this.dialogEditar = false;
+            this.buscarNomes();
+          })
+          .catch((error) => {
+            console.error("Erro ao editar produto:", error);
+          });
+      }
     },
 
     buscarNomes() {
       api
-        .get("/cozinha/cadproduto/")
+        .get("http://localhost:8000/api/cozinha/cadproduto/")
         .then((response) => {
-          this.nomes = response.data.sort((a, b) => {
+          this.produtosListar = response.data.sort((a, b) => {
             return new Date(b.created_at) - new Date(a.created_at);
           });
         })
@@ -160,22 +208,65 @@ export default {
       this.dialogEditar = true;
     },
     adicionarNomeProduto() {
-      api
-        .post("/cozinha/cadproduto", {
-          produto_nome: this.novoNome,
-        })
-        .then((response) => {
-          this.nomes.push(response.data);
-          this.abrirLista = false;
-          this.novoNome = "";
-        })
-        .catch((error) => {
-          console.error("Erro ao adicionar nome:", error);
-        });
+      const form = this.$refs.formAdicionar;
+      if (form && form.validate()) {
+        const nomeMinusculo = this.novoProduto.nome.trim().toLowerCase();
+
+        const produtoExist = this.produtosListar.some(
+          (item) => item.produto_nome.trim().toLowerCase() === nomeMinusculo
+        );
+
+        if (produtoExist) {
+          this.erroProdutoNome =
+            "O produto informado já existe na lista de produtos.";
+          return;
+        }
+        api
+          .post("http://localhost:8000/api/cozinha/cadproduto", {
+            produto_nome: this.novoProduto.nome,
+            quantidade: this.novoProduto.quantidade,
+          })
+          .then((response) => {
+            this.produtosListar.push(response.data);
+
+            this.produtosListar.sort((a, b) => {
+              return new Date(b.created_at) - new Date(a.created_at);
+            });
+
+            this.novoProduto.nome = "";
+            this.novoProduto.quantidade = null;
+            this.abrirLista = false;
+          })
+          .catch((error) => {
+            if (error.response && error.response.status === 422) {
+              const erros = error.response.data.errors;
+
+              if (erros.produto_nome) {
+                this.erroProdutoNome = erros.produto_nome[0];
+              }
+              if (erros.quantidade) {
+                this.erroQuantidade = erros.quantidade[0];
+              }
+            } else {
+              console.error("Erro desconhecido:", error);
+            }
+          });
+      }
     },
   },
   mounted() {
     this.buscarNomes();
+
+    api
+      .get("http://localhost:8000/api/cozinha/cadproduto")
+      .then((response) => {
+        this.produtosListar = response.data.sort((a, b) => {
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+      })
+      .catch((error) => {
+        console.error("Erro ao buscar nomes:", error);
+      });
   },
 };
 </script>

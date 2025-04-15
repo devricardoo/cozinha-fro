@@ -39,16 +39,20 @@
       </v-card-text>
     </v-card>
   </v-dialog>
+
+  <escolher-perfil v-model="mostrarEscolhaPerfil" @escolhido="entrarComo" />
 </template>
 
 <script>
 //import auth from "@/services/auth";
 import axios from "axios";
 import emitter from "@/eventBus";
+import EscolherPerfil from "@/views/escolherPerfil.vue";
 
 export default {
   data() {
     return {
+      mostrarEscolhaPerfil: false,
       email: "",
       password: "",
       loginErro: "",
@@ -79,7 +83,12 @@ export default {
 
         emitter.emit("usuarioLogado", users);
 
-        this.$router.push("/");
+        if (users.is_admin) {
+          this.mostrarEscolhaPerfil = true; // Mostra o modal para escolha
+        } else {
+          localStorage.setItem("modoEntrada", "usuario");
+          this.$router.push("/");
+        }
       } catch (error) {
         if (error.response && error.response.status === 401) {
           this.loginErro = "E-mail ou senha incorretos.";
@@ -94,6 +103,11 @@ export default {
     fecharDialogErro() {
       this.dialogErro = false;
     },
+    entrarComo(modo) {
+      localStorage.setItem("modoEntrada", modo);
+      this.$router.push("/");
+    },
   },
+  components: { EscolherPerfil },
 };
 </script>

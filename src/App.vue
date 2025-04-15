@@ -24,6 +24,15 @@
           >
           </v-list-item>
 
+          <v-list-item
+            prepend-icon="mdi-view-list"
+            v-if="autorizado"
+            title="Cadastrar usuários"
+            value="cadastroUsuarios"
+            to="/cadastroUsuarios"
+          >
+          </v-list-item>
+
           <v-dialog v-model="dialog" width="auto">
             <v-card max-width="600" width="400" height="800">
               <cad class="mt-10"></cad>
@@ -46,7 +55,9 @@
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
         </template>
 
-        <v-app-bar-title>Seja bem-vindo(a)</v-app-bar-title>
+        <v-app-bar-title v-if="usuario"
+          >Olá {{ usuario.name }}
+        </v-app-bar-title>
         <v-btn icon>
           <v-icon @click="active = !active">mdi-dots-vertical</v-icon>
           <v-menu activator="parent">
@@ -95,20 +106,24 @@ const router = useRouter();
 const rotasSemLayout = ["/registrar", "/login"];
 const isLayoutDisabled = computed(() => rotasSemLayout.includes(route.path));
 
+emitter.on("usuarioLogado", (usr) => {
+  usuario.value = usr;
+});
+
 onMounted(() => {
   const user = localStorage.getItem("user");
   if (user) {
     usuario.value = JSON.parse(user);
   }
-
-  emitter.on("usuarioLogado", (usr) => {
-    usuario.value = usr;
-  });
 });
 
 // Verifica autorização do usuário
 const autorizado = computed(() => {
-  return usuario.value?.email === "pauloric@gmail.com";
+  const modoEntrada = localStorage.getItem("modoEntrada");
+  return (
+    usuario.value?.is_admin === 1 ||
+    (usuario.value?.is_admin === true && modoEntrada === "admin")
+  );
 });
 
 // Função de logout

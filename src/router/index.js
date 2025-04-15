@@ -25,6 +25,12 @@ const additionalRoutes = [
     meta: { requiresAuth: true, onlyAdmin: true },
   },
   {
+    path: "/cadastroUsuarios",
+    name: "cadUsuario",
+    component: () => import("../views/cadastUsuarios.vue"),
+    meta: { requiresAuth: true, onlyAdmin: true },
+  },
+  {
     path: "/registrar",
     component: Registro,
     children: [
@@ -62,15 +68,16 @@ additionalRoutes.forEach((route) => {
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem("token");
   const users = JSON.parse(localStorage.getItem("user"));
+  const modoEntrada = localStorage.getItem("modoEntrada");
 
-  // Se a rota exigir autenticação e não houver token, redireciona pro login
   if (to.meta.requiresAuth && !token) {
     next("/login");
   }
 
-  // Verifica se essa rota exige permissão especial (admin, por exemplo)
+  // Verifica se a rota exige permissão especial (admin, por exemplo)
   else if (to.meta.onlyAdmin) {
-    if (users && users.email === "pauloric@gmail.com") {
+    // Se a rota exigir admin, verificamos se o usuário logado tem permissão
+    if (users && users.is_admin === true && modoEntrada === "admin") {
       next();
     } else {
       next("/");
