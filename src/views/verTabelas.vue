@@ -5,16 +5,28 @@
         <v-col>
           <v-card
             class="mx-auto flat"
-            max-width="650"
+            max-width="660"
             style="border: none; box-shadow: none"
           >
-            <div class="d-flex justify-end">
-              <v-card class="flat border mb-1" width="100">
+            <div class="d-flex justify-between align-center" style="gap: 350px">
+              <v-text-field
+                v-model="searchInput"
+                label="Pesquisar"
+                append-icon="mdi-magnify"
+                hide-details
+                density="compact"
+                class="mb-1"
+                @click:append="pesquisar"
+                @keyup.enter="pesquisar"
+                style="max-width: 200px; font-size: 13px"
+              ></v-text-field>
+              <v-card class="flat border" width="100">
                 <div>
                   <v-btn
                     color="#4db6ac"
                     variant="text"
                     size="small"
+                    class="mt-1"
                     @click="abrirAdicionar"
                   >
                     Adicionar
@@ -31,6 +43,11 @@
                   <th class="text-left">Quantidade</th>
                   <th class="text-left">Descrição</th>
                   <th class="text-left">Ações</th>
+                  <th>
+                    <v-btn variant="text" @click="downloadXLSX(item)">
+                      <v-icon>mdi-download</v-icon>
+                    </v-btn>
+                  </th>
                 </tr>
               </thead>
               <tbody style="background: #eceff1">
@@ -59,6 +76,7 @@
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
                   </td>
+                  <td></td>
                 </tr>
               </tbody>
             </v-table>
@@ -134,7 +152,7 @@
       <v-card>
         <v-card-title class="text-h5">Editar Produto</v-card-title>
         <v-card-text>
-          <form @submit.prevent>
+          <form ref="formEditar" @submit.prevent>
             <v-text-field
               v-model="editItem.data"
               :rules="rules.date"
@@ -213,6 +231,7 @@ export default {
   components: { lista },
   data() {
     return {
+      quantidadeMinima: null,
       quantidadeMaxima: null,
       rules: {
         date: dateRules,
@@ -227,14 +246,20 @@ export default {
         ],
         quantidade: [
           (value) => !!value || "A quantidade é obrigatória.",
+          (value) => value > 0 || "A quantidade deve ser maior que zero.",
           (value) =>
-            !this.quantidadeMaxima ||
+            this.quantidadeMinima == null ||
+            value >= this.quantidadeMinima ||
+            `A quantidade deve ser no mínimo ${this.quantidadeMinima}.`,
+          (value) =>
+            this.quantidadeMaxima == null ||
             value <= this.quantidadeMaxima ||
             `A quantidade deve ser no máximo ${this.quantidadeMaxima}.`,
-          (value) => value > 0 || "A quantidade deve ser maior que zero.",
         ],
         descricao: descricaoRules,
       },
+      search: "",
+      searchInput: "",
       produtosListar: [],
       produtosDisponiveis: [],
       produtosAPI: [],
@@ -245,6 +270,7 @@ export default {
         produto_id: null,
         quantidade: null,
         descricao: "",
+        quantidade_minima: null,
       },
       dialogAdicionar: false,
       dialogEditar: false,
@@ -262,15 +288,59 @@ export default {
         value: item.id,
       }));
     },
+    produtosFiltrados() {
+      if (!this.search) return this.produtosListar;
+
+      const texto = this.search.toLowerCase();
+
+      return this.produtosListar.filter((item) => {
+        const nomeProduto = item.produto?.produto_nome?.toLowerCase() || "";
+        const data = item.data?.toLowerCase() || "";
+        return nomeProduto.includes(texto) || data.includes(texto);
+      });
+    },
     produtosPaginados() {
+      const produtosParaPaginacao = this.search
+        ? this.produtosFiltrados
+        : this.produtosListar;
       const start = (this.page - 1) * this.itemsPerPage;
-      return this.produtosListar.slice(start, start + this.itemsPerPage);
+      return produtosParaPaginacao.slice(start, start + this.itemsPerPage);
     },
     pageCount() {
-      return Math.ceil(this.produtosListar.length / this.itemsPerPage);
+      const produtosParaPaginacao = this.search
+        ? this.produtosFiltrados
+        : this.produtosListar;
+      return Math.ceil(produtosParaPaginacao.length / this.itemsPerPage);
     },
   },
   methods: {
+    async downloadXLSX(item) {
+      try {
+        const response = await api.get(
+          `http://localhost:8000/api/cozinha/tarefas/exportacao`,
+          {
+            responseType: "blob",
+          }
+        );
+
+        const blob = new Blob([response.data], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.setAttribute("download", "lista_de_produtos.xlsx");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error("Erro ao baixar o arquivo:", error);
+      }
+    },
+    pesquisar() {
+      this.search = this.searchInput;
+      this.page = 1;
+    },
     formatarData(data) {
       if (!data) return "";
       return new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
@@ -402,6 +472,7 @@ export default {
     atualizarQuantidadeMaxima(id) {
       const produto = this.produtosDisponiveis.find((p) => p.id === id);
       this.quantidadeMaxima = produto ? produto.quantidade : null;
+      this.quantidadeMinima = produto ? produto.quantidade_minima : null;
     },
   },
   mounted() {

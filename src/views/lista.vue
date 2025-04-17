@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <v-card class="mx-auto mt-3" max-width="500">
+    <v-card class="mx-auto mt-3" max-width="570">
       <v-card-title class="text-center">
         Lista de Produtos
         <v-spacer></v-spacer>
@@ -15,7 +15,8 @@
             <th>
               <strong>Nome</strong>
             </th>
-            <th>Quantidade</th>
+            <th>Quantidade mínima</th>
+            <th>Quantidade máxima</th>
             <th></th>
           </tr>
         </thead>
@@ -23,9 +24,14 @@
           <tr v-for="nome in produtosPaginados" :key="nome.id">
             <td>{{ new Date(nome.created_at).toLocaleDateString() }}</td>
             <td>{{ nome.produto_nome }}</td>
+            <td>{{ nome.quantidade_minima }}</td>
             <td>{{ nome.quantidade }}</td>
             <td class="text-right">
-              <v-btn variant="text" @click="abrirEdicao(nome, index)">
+              <v-btn
+                variant="text"
+                class="float-end"
+                @click="abrirEdicao(nome, index)"
+              >
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
             </td>
@@ -63,8 +69,18 @@
             ></v-text-field>
 
             <v-text-field
-              v-model="novoProduto.quantidade"
-              label="Quantidade"
+              v-model="novoProduto.quantidade_minima"
+              label="Quantidade mínima"
+              type="number"
+              :rules="rules.quantidade"
+              outlined
+              :error-messages="erroQuantidade"
+              required
+            ></v-text-field>
+
+            <v-text-field
+              v-model="novoProduto.quantidade_maxima"
+              label="Quantidade máxima"
               :rules="rules.quantidade"
               type="number"
               outlined
@@ -96,8 +112,15 @@
             ></v-text-field>
 
             <v-text-field
+              v-model="editItem.quantidade_minima"
+              label="Quantidade mínima"
+              type="number"
+              required
+            ></v-text-field>
+
+            <v-text-field
               v-model="editItem.quantidade"
-              label="Quantidade"
+              label="Quantidade máxima"
               :rules="rules.quantidade"
               type="number"
               required
@@ -140,6 +163,7 @@ export default {
             );
           },
         ],
+        quantidade_minima: quantidadeRules,
         quantidade: quantidadeRules,
       },
       abrirLista: false,
@@ -152,7 +176,8 @@ export default {
       novoQuantidade: null,
       novoProduto: {
         nome: "",
-        quantidade: null,
+        quantidade_minima: null,
+        quantidade_maxima: null,
       },
       erroProdutoNome: "",
       erroQuantidade: "",
@@ -177,7 +202,8 @@ export default {
             `http://localhost:8000/api/cozinha/cadproduto/${this.editItem.id}`,
             {
               produto_nome: this.editItem.produto_nome,
-              quantidade: this.editItem.quantidade,
+              quantidade_minima: this.editItem.quantidade_minima,
+              quantidade_maxima: this.editItem.quantidade_maxima,
             }
           )
           .then(() => {
@@ -224,7 +250,8 @@ export default {
         api
           .post("http://localhost:8000/api/cozinha/cadproduto", {
             produto_nome: this.novoProduto.nome,
-            quantidade: this.novoProduto.quantidade,
+            quantidade: this.novoProduto.quantidade_maxima,
+            quantidade_minima: this.novoProduto.quantidade_minima,
           })
           .then((response) => {
             this.produtosListar.push(response.data);
@@ -234,7 +261,8 @@ export default {
             });
 
             this.novoProduto.nome = "";
-            this.novoProduto.quantidade = null;
+            this.novoProduto.quantidade_minima = null;
+            this.novoProduto.quantidade_maxima = null;
             this.abrirLista = false;
           })
           .catch((error) => {
@@ -244,8 +272,8 @@ export default {
               if (erros.produto_nome) {
                 this.erroProdutoNome = erros.produto_nome[0];
               }
-              if (erros.quantidade) {
-                this.erroQuantidade = erros.quantidade[0];
+              if (erros.quantidade_maxima) {
+                this.erroQuantidade = erros.quantidade_maxima[0];
               }
             } else {
               console.error("Erro desconhecido:", error);
