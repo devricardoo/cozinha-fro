@@ -103,26 +103,40 @@
             <v-text-field
               v-model="novoProduto.data"
               label="Data"
-              :rules="rules.date"
+              :rules="rulesAdicionar.date"
               type="date"
               required
             ></v-text-field>
 
-            <v-select
+            <v-autocomplete
               v-model="novoProduto.produto_id"
-              :items="produtosFormatados"
+              :items="produtosOrdenados"
               item-value="value"
               item-title="text"
-              :rules="rules.produto"
-              label="Produto"
+              label="Selecionar produto"
+              :rules="rulesAdicionar.produto"
+              append-inner-icon="mdi-magnify"
+              density="compact"
               required
-              @update:modelValue="(val) => atualizarQuantidadeMaxima(val)"
-            ></v-select>
+              class="mb-5"
+              @update:modelValue="
+                (val) => {
+                  atualizarQuantidadeMaxima(val);
+                }
+              "
+              style="height: 50px"
+            >
+              <template #no-data>
+                <div class="pa-2 text-caption" style="color: #b00020">
+                  Produto não encontrado
+                </div>
+              </template>
+            </v-autocomplete>
 
             <v-text-field
               v-model="novoProduto.quantidade"
               label="Quantidade"
-              :rules="rules.quantidade"
+              :rules="regrasQuantidadeAdicionar"
               type="number"
               required
             ></v-text-field>
@@ -130,7 +144,7 @@
             <v-text-field
               v-model="novoProduto.descricao"
               label="Descrição"
-              :rules="rules.descricao"
+              :rules="rulesAdicionar.descricao"
               type="text"
               required
             ></v-text-field>
@@ -142,7 +156,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="dialogAdicionar = false">Cancelar</v-btn>
+          <v-btn text @click="fecharAdicionar">Cancelar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -152,38 +166,44 @@
       <v-card>
         <v-card-title class="text-h5">Editar Produto</v-card-title>
         <v-card-text>
-          <form ref="formEditar" @submit.prevent>
+          <v-form ref="formEditar" @submit.prevent>
             <v-text-field
               v-model="editItem.data"
-              :rules="rules.date"
+              :rules="rulesEditar.date"
               label="Data"
               type="date"
             ></v-text-field>
             <v-select
               v-model="editItem.produto_id"
-              :items="produtosFormatados"
-              :rules="rules.produto"
+              :items="produtosOrdenados"
+              :rules="rulesEditar.produto"
               item-value="value"
               item-title="text"
               label="Produto"
-              @update:modelValue="(val) => atualizarQuantidadeMaxima(val)"
+              @update:modelValue="
+                (val) => {
+                  atualizarQuantidadeMaxima(val);
+                }
+              "
               required
             >
             </v-select>
 
             <v-text-field
               v-model="editItem.quantidade"
-              :rules="rules.quantidade"
+              :rules="regrasQuantidadeEditar"
               label="Quantidade"
               type="number"
             ></v-text-field>
+
             <v-text-field
               v-model="editItem.descricao"
-              :rules="rules.descricao"
+              :rules="rulesEditar.descricao"
               label="Descrição"
             ></v-text-field>
+
             <v-btn color="green" text @click="salvarEdicao">Salvar</v-btn>
-          </form>
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -231,30 +251,46 @@ export default {
   components: { lista },
   data() {
     return {
-      quantidadeMinima: null,
-      quantidadeMaxima: null,
-      rules: {
+      quantidadeMinimaAdicionar: null,
+      quantidadeMaximaAdicionar: null,
+      quantidadeMinimaEditar: null,
+      quantidadeMaximaEditar: null,
+      rulesAdicionar: {
         date: dateRules,
         produto: [
-          (value) => !!value || "Escolha um produto.",
+          (value) => !!value || "Escolha um produto",
           (value) => {
             const existe = this.produtosListar.some(
               (item) => item.produto_id === value
             );
-            return !existe || "Este produto já foi adicionado.";
+            return !existe || "Este produto já foi adicionado";
           },
         ],
         quantidade: [
-          (value) => !!value || "A quantidade é obrigatória.",
-          (value) => value > 0 || "A quantidade deve ser maior que zero.",
+          (value) => !!value || "A quantidade é obrigatória",
+          (value) => value > 0 || "A quantidade deve ser maior que zero",
           (value) =>
-            this.quantidadeMinima == null ||
-            value >= this.quantidadeMinima ||
-            `A quantidade deve ser no mínimo ${this.quantidadeMinima}.`,
+            this.quantidadeMinimaAdicionar == null ||
+            value >= this.quantidadeMinimaAdicionar ||
+            `A quantidade deve ser no mínimo ${this.quantidadeMinimaAdicionar}`,
           (value) =>
-            this.quantidadeMaxima == null ||
-            value <= this.quantidadeMaxima ||
-            `A quantidade deve ser no máximo ${this.quantidadeMaxima}.`,
+            this.quantidadeMaximaAdicionar == null ||
+            value <= this.quantidadeMaximaAdicionar ||
+            `A quantidade deve ser no máximo ${this.quantidadeMaximaAdicionar}`,
+        ],
+        descricao: descricaoRules,
+      },
+      rulesEditar: {
+        date: dateRules,
+        produto: [
+          (value) => !!value || "Escolha um produto",
+          (value) => {
+            const existe = this.produtosListar.some(
+              (item) =>
+                item.produto_id === value && item.id !== this.editItem.id
+            );
+            return !existe || "Este produto já foi adicionado";
+          },
         ],
         descricao: descricaoRules,
       },
@@ -282,6 +318,39 @@ export default {
     };
   },
   computed: {
+    regrasQuantidadeAdicionar() {
+      return [
+        (value) => !!value || "A quantidade é obrigatória",
+        (value) => value > 0 || "A quantidade deve ser maior que zero",
+        (value) =>
+          this.quantidadeMinimaAdicionar == null ||
+          value >= this.quantidadeMinimaAdicionar ||
+          `A quantidade deve ser no mínimo ${this.quantidadeMinimaAdicionar}`,
+        (value) =>
+          this.quantidadeMaximaAdicionar == null ||
+          value <= this.quantidadeMaximaAdicionar ||
+          `A quantidade deve ser no máximo ${this.quantidadeMaximaAdicionar}`,
+      ];
+    },
+    regrasQuantidadeEditar() {
+      return [
+        (v) => !!v || "A quantidade é obrigatória.",
+        (v) => v > 0 || "A quantidade deve ser maior que zero.",
+        (v) =>
+          this.quantidadeMinimaEditar == null ||
+          v >= this.quantidadeMinimaEditar ||
+          `A quantidade deve ser no mínimo ${this.quantidadeMinimaEditar}`,
+        (v) =>
+          this.quantidadeMaximaEditar == null ||
+          v <= this.quantidadeMaximaEditar ||
+          `A quantidade deve ser no mãximo ${this.quantidadeMaximaEditar}`,
+      ];
+    },
+    produtosOrdenados() {
+      return this.produtosFormatados.sort((a, b) =>
+        a.text.localeCompare(b.text)
+      );
+    },
     produtosFormatados() {
       return this.produtosDisponiveis.map((item) => ({
         text: item.produto_nome,
@@ -316,10 +385,23 @@ export default {
   methods: {
     async downloadXLSX(item) {
       try {
+        const produtosExportar = this.search
+          ? this.produtosFiltrados
+          : this.produtosListar;
+
+        const produtosData = produtosExportar.map((p) => ({
+          data: p.data,
+          produto_nome: p.produto.produto_nome,
+          quantidade: p.quantidade,
+          descricao: p.descricao,
+        }));
         const response = await api.get(
           `http://localhost:8000/api/cozinha/tarefas/exportacao`,
           {
             responseType: "blob",
+            params: {
+              produtos: produtosData,
+            },
           }
         );
 
@@ -349,15 +431,29 @@ export default {
       this.dialogAdicionar = true;
     },
     abrirEdicao(item, index) {
-      this.quantidadeMaxima = item.quantidade;
-      this.editItem = JSON.parse(JSON.stringify(item));
+      // 1. preenche editItem
+      this.editItem = { ...item };
       this.editIndex = index;
+
+      // 2. busca o produto original na tabela de DISPONÍVEIS
+      const produtoOriginal = this.produtosDisponiveis.find(
+        (p) => p.id === item.produto_id
+      );
+
+      // 3. seta os limites de edição
+      this.quantidadeMinimaEditar = produtoOriginal?.quantidade_minima ?? null;
+      this.quantidadeMaximaEditar = produtoOriginal?.quantidade ?? null;
+
+      // 4. abre o diálogo
       this.dialogEditar = true;
     },
     abrirExclusao(item, index) {
       this.deleteItem = JSON.parse(JSON.stringify(item));
       this.deleteIndex = index;
       this.dialogExcluir = true;
+    },
+    fecharAdicionar() {
+      this.dialogAdicionar = false;
     },
     atualizarProdutosEdicao() {
       api
@@ -376,8 +472,8 @@ export default {
         });
     },
     salvarEdicao() {
-      this.$refs.formEditar.validate().then((isValid) => {
-        if (!isValid) return;
+      this.$refs.formEditar.validate().then((resultado) => {
+        if (!resultado.valid) return;
 
         api
           .put(
@@ -385,7 +481,7 @@ export default {
             {
               data: this.editItem.data,
               produto_id: this.editItem.produto_id,
-              quantidade: Number(this.editItem.quantidade),
+              quantidade: this.editItem.quantidade,
               descricao: this.editItem.descricao,
             },
             {
@@ -424,8 +520,8 @@ export default {
         });
     },
     adicionarItem() {
-      this.$refs.formAdicionar.validate().then((isValid) => {
-        if (!isValid) return;
+      this.$refs.formAdicionar.validate().then((resultado) => {
+        if (!resultado.valid) return;
 
         api
           .post(
@@ -471,8 +567,27 @@ export default {
     },
     atualizarQuantidadeMaxima(id) {
       const produto = this.produtosDisponiveis.find((p) => p.id === id);
-      this.quantidadeMaxima = produto ? produto.quantidade : null;
-      this.quantidadeMinima = produto ? produto.quantidade_minima : null;
+
+      if (produto) {
+        if (this.dialogAdicionar) {
+          this.quantidadeMaximaAdicionar = produto.quantidade;
+          this.quantidadeMinimaAdicionar = produto.quantidade_minima;
+        }
+
+        if (this.dialogEditar) {
+          this.quantidadeMaximaEditar = produto.quantidade;
+          this.quantidadeMinimaEditar = produto.quantidade_minima;
+        }
+      } else {
+        if (this.dialogAdicionar) {
+          this.quantidadeMaximaAdicionar = null;
+          this.quantidadeMinimaAdicionar = null;
+        }
+        if (this.dialogEditar) {
+          this.quantidadeMaximaEditar = null;
+          this.quantidadeMinimaEditar = null;
+        }
+      }
     },
   },
   mounted() {

@@ -16,6 +16,13 @@
       </v-card-text>
       <v-btn
         variant="text"
+        style="font-size: 12px; margin-top: -12px"
+        color="primary"
+        to="/reset"
+        >Esqueci minha senha</v-btn
+      >
+      <v-btn
+        variant="text"
         class="d-flex justify-center"
         color="primary"
         to="/registrar"
@@ -40,7 +47,12 @@
     </v-card>
   </v-dialog>
 
-  <escolher-perfil v-model="mostrarEscolhaPerfil" @escolhido="entrarComo" />
+  <escolher-perfil
+    v-if="mostrarEscolhaPerfil"
+    v-model="mostrarEscolhaPerfil"
+    :roles="useRoles"
+    @escolhido="entrarComo"
+  />
 </template>
 
 <script>
@@ -57,10 +69,8 @@ export default {
       password: "",
       loginErro: "",
       dialogErro: false,
+      useRoles: [],
     };
-  },
-  mounted() {
-    document.title = "Login";
   },
   methods: {
     async handleLogin() {
@@ -76,16 +86,26 @@ export default {
         // Armazena o token
         localStorage.setItem("token", token);
 
+        // Armazena o usuário com suas roles
         localStorage.setItem("user", JSON.stringify(users));
+
+        this.useRoles = users.roles;
 
         // Define o token nos headers para as próximas requisições
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
         emitter.emit("usuarioLogado", users);
 
-        if (users.is_admin) {
-          this.mostrarEscolhaPerfil = true; // Mostra o modal para escolha
-        } else {
+        // Verifica se o usuário tem a role 'admin' dentro da lista de roles
+        const isAdmin = users.roles.some((role) => role.name === "admin");
+        const isUser = users.roles.some((role) => role.name === "user");
+
+        if (isAdmin && isUser) {
+          this.mostrarEscolhaPerfil = true;
+        } else if (isAdmin) {
+          localStorage.setItem("modoEntrada", "admin");
+          this.$router.push("/");
+        } else if (isUser) {
           localStorage.setItem("modoEntrada", "usuario");
           this.$router.push("/");
         }
@@ -96,7 +116,6 @@ export default {
           this.loginErro =
             "Erro ao tentar fazer login. Por favor, tente novamente.";
         }
-
         this.dialogErro = true;
       }
     },

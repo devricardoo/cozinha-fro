@@ -84,7 +84,23 @@
             required
           ></v-text-field>
 
-          <v-checkbox v-model="is_admin" label="Definir como administrador" />
+          <v-select
+            v-model="roles"
+            :items="selectRoles"
+            label="Definir como"
+            item-title="label"
+            item-value="value"
+            multiple
+          >
+            <template v-slot:item="{ item, props }">
+              <v-list-item v-bind="props">
+                <template v-slot:prepend>
+                  <v-checkbox-btn :model-value="roles.includes(item.value)" />
+                </template>
+                <v-list-item-title>{{ item.label }}</v-list-item-title>
+              </v-list-item>
+            </template>
+          </v-select>
 
           <v-btn color="green" class="mt-2" text @click="adicionarUsuario"
             >Registrar</v-btn
@@ -113,18 +129,22 @@
           </v-text-field>
 
           <v-select
-            v-model="editItem.is_admin"
+            v-model="editItem.roles"
             :items="selectRoles"
             label="Definir como"
             item-title="label"
             item-value="value"
             return-object
+            multiple
+            dense
           >
             <template v-slot:item="{ item, props }">
               <v-list-item v-bind="props">
                 <template v-slot:prepend>
                   <v-checkbox-btn
-                    :model-value="editItem.is_admin.value === item.value"
+                    :model-value="
+                      editItem.roles.some((role) => role.value === item.value)
+                    "
                   />
                 </template>
                 <v-list-item-title>{{ item.label }}</v-list-item-title>
@@ -182,7 +202,7 @@ const passwordRules = [
 export default {
   data() {
     return {
-      user: {},
+      user: [],
       name: "",
       email: "",
       password: "",
@@ -196,10 +216,11 @@ export default {
       },
       editItem: {},
       deleteItem: {},
-      is_admin: false,
+      roles: [],
+      //is_admin: false,
       selectRoles: [
-        { label: "Administrador", value: true },
-        { label: "Usuário", value: false },
+        { label: "Administrador", value: "admin" },
+        { label: "Usuário", value: "user" },
       ],
     };
   },
@@ -208,15 +229,19 @@ export default {
       this.dialogAdicionar = true;
     },
     abrirEdicao(item) {
+      const rolesSelecionadas = item.roles
+        .map((role) => {
+          return this.selectRoles.find((r) => r.value === role);
+        })
+        .filter(Boolean);
+
       this.editItem = {
         ...item,
-        is_admin: item.is_admin
-          ? { label: "Administrador", value: true }
-          : { label: "Usuário", value: false },
+        roles: rolesSelecionadas,
       };
+
       this.dialogEditar = true;
     },
-
     abrirExclusao(item) {
       this.deleteItem = item;
       this.dialogExcluir = true;
@@ -232,11 +257,19 @@ export default {
         });
     },
     salvarEdicao() {
+      const roles = this.editItem.roles.map((role) =>
+        typeof role === "string" ? role : role.value
+      );
+
+      if (roles.length === 0) {
+        roles.push("user");
+      }
+
       api
         .put(`http://localhost:8000/api/cozinha/users/${this.editItem.id}`, {
           name: this.editItem.name,
           email: this.editItem.email,
-          is_admin: this.editItem.is_admin?.value ? 1 : 0,
+          roles: roles,
         })
         .then(() => {
           this.dialogEditar = false;
@@ -249,24 +282,39 @@ export default {
     adicionarUsuario() {
       this.$refs.formAdicionar.validate().then((isValid) => {
         if (!isValid) return;
+
+        if (this.roles.length === 0) {
+          this.roles = ["user"];
+        }
+
+        console.log("Roles selecionadas:", this.roles);
+
         api
           .post("http://localhost:8000/api/register", {
             name: this.name,
             email: this.email,
             password: this.password,
-            is_admin: this.is_admin ? 1 : 0,
+            roles: this.roles,
           })
           .then(() => {
+            console.log("roles enviado para o backend:", this.roles);
             this.dialogAdicionar = false;
 
             this.name = "";
             this.email = "";
             this.password = "";
-            this.is_admin = false;
+            this.roles = [];
 
             this.atualizarUsuarios();
           })
-          .catch((error) => console.error("Erro ao registrar:", error));
+          .catch((error) => {
+            if (error.response) {
+              console.error("Erros de validação:", error.response.data);
+              alert("Erro: " + JSON.stringify(error.response.data));
+            } else {
+              console.error("Erro desconhecido:", error);
+            }
+          });
       });
     },
     confirmarExclusao() {

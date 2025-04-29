@@ -103,7 +103,7 @@ const items = [{ title: "Sair" }];
 const route = useRoute();
 const router = useRouter();
 
-const rotasSemLayout = ["/registrar", "/login"];
+const rotasSemLayout = ["/registrar", "/login", "/reset"];
 const isLayoutDisabled = computed(() => rotasSemLayout.includes(route.path));
 
 emitter.on("usuarioLogado", (usr) => {
@@ -121,8 +121,8 @@ onMounted(() => {
 const autorizado = computed(() => {
   const modoEntrada = localStorage.getItem("modoEntrada");
   return (
-    usuario.value?.is_admin === 1 ||
-    (usuario.value?.is_admin === true && modoEntrada === "admin")
+    usuario.value?.roles?.some((role) => role.name === "admin") &&
+    modoEntrada === "admin"
   );
 });
 

@@ -11,6 +11,8 @@ import { routes } from "vue-router/auto-routes";
 import Registro from "@/layouts/Registro.vue";
 import registrarUsers from "../views/registrarUsuario.vue";
 import login from "../views/login.vue";
+import resetarSenha from "../views/resetSenha.vue";
+import Reset from "@/layouts/ResetSenha.vue";
 
 const additionalRoutes = [
   {
@@ -38,6 +40,17 @@ const additionalRoutes = [
         path: "",
         name: "Registro",
         component: registrarUsers,
+      },
+    ],
+  },
+  {
+    path: "/reset",
+    component: Reset,
+    children: [
+      {
+        path: "",
+        name: "Reset",
+        component: resetarSenha,
       },
     ],
   },
@@ -72,18 +85,18 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !token) {
     next("/login");
-  }
-
-  // Verifica se a rota exige permissão especial (admin, por exemplo)
-  else if (to.meta.onlyAdmin) {
-    // Se a rota exigir admin, verificamos se o usuário logado tem permissão
-    if (users && users.is_admin === true && modoEntrada === "admin") {
+  } else if (to.meta.onlyAdmin) {
+    if (
+      users &&
+      users.roles?.some((role) => role.name === "admin") &&
+      modoEntrada === "admin"
+    ) {
       next();
     } else {
-      next("/");
+      next("/"); // redireciona caso não seja admin
     }
   } else {
-    next();
+    next(); // rota pública ou apenas requiresAuth
   }
 });
 
