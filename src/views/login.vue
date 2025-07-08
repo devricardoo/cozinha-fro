@@ -85,10 +85,13 @@ export default {
   methods: {
     async handleLogin() {
       try {
-        const response = await axios.post("http://localhost:8080/api/login", {
-          email: this.email,
-          password: this.password,
-        });
+        const response = await axios.post(
+          "http://host.docker.internal:8000/api/login",
+          {
+            email: this.email,
+            password: this.password,
+          }
+        );
 
         const token = response.data.token;
         const users = response.data.user;
