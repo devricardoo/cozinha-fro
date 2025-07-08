@@ -431,20 +431,16 @@ export default {
       this.dialogAdicionar = true;
     },
     abrirEdicao(item, index) {
-      // 1. preenche editItem
       this.editItem = { ...item };
       this.editIndex = index;
 
-      // 2. busca o produto original na tabela de DISPONÍVEIS
       const produtoOriginal = this.produtosDisponiveis.find(
         (p) => p.id === item.produto_id
       );
 
-      // 3. seta os limites de edição
       this.quantidadeMinimaEditar = produtoOriginal?.quantidade_minima ?? null;
       this.quantidadeMaximaEditar = produtoOriginal?.quantidade ?? null;
 
-      // 4. abre o diálogo
       this.dialogEditar = true;
     },
     abrirExclusao(item, index) {
