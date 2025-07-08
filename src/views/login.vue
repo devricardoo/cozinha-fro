@@ -1,58 +1,68 @@
 <template>
-  <v-container>
-    <v-card class="pa-5 mx-auto mt-16" max-width="400">
-      <v-card-title>Login</v-card-title>
-      <v-card-text>
-        <v-form @submit.prevent="handleLogin">
-          <v-text-field v-model="email" label="E-mail" required></v-text-field>
-          <v-text-field
-            v-model="password"
-            label="Senha"
-            type="password"
-            required
-          ></v-text-field>
-          <v-btn type="submit" block color="primary">Entrar</v-btn>
-        </v-form>
-      </v-card-text>
-      <v-btn
-        variant="text"
-        style="font-size: 12px; margin-top: -12px"
-        color="primary"
-        to="/reset"
-        >Esqueci minha senha</v-btn
-      >
-      <v-btn
-        variant="text"
-        class="d-flex justify-center"
-        color="primary"
-        to="/registrar"
-        >Registrar-se</v-btn
-      >
-    </v-card>
-  </v-container>
-
-  <v-dialog
-    v-model="dialogErro"
-    max-width="300"
-    transition="dialog-bottom-transition"
-  >
-    <v-card>
-      <v-card-text class="text-center mt-3">
-        <v-icon color="red" size="30">mdi-alert-circle</v-icon>
-        <p class="mt-4 text-body-2">{{ loginErro }}</p>
-        <v-btn color="red" class="mt-2" variant="text" @click="fecharDialogErro"
-          >Fechar</v-btn
+  <div>
+    <v-container>
+      <v-card class="pa-5 mx-auto mt-16" max-width="400">
+        <v-card-title>Login</v-card-title>
+        <v-card-text>
+          <v-form @submit.prevent="handleLogin">
+            <v-text-field
+              v-model="email"
+              label="E-mail"
+              required
+            ></v-text-field>
+            <v-text-field
+              v-model="password"
+              label="Senha"
+              type="password"
+              required
+            ></v-text-field>
+            <v-btn type="submit" block color="primary">Entrar</v-btn>
+          </v-form>
+        </v-card-text>
+        <v-btn
+          variant="text"
+          style="font-size: 12px; margin-top: -12px"
+          color="primary"
+          to="/reset"
+          >Esqueci minha senha</v-btn
         >
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+        <v-btn
+          variant="text"
+          class="d-flex justify-center"
+          color="primary"
+          to="/registrar"
+          >Registrar-se</v-btn
+        >
+      </v-card>
+    </v-container>
 
-  <escolher-perfil
-    v-if="mostrarEscolhaPerfil"
-    v-model="mostrarEscolhaPerfil"
-    :roles="useRoles"
-    @escolhido="entrarComo"
-  />
+    <v-dialog
+      v-model="dialogErro"
+      max-width="300"
+      transition="dialog-bottom-transition"
+    >
+      <v-card>
+        <v-card-text class="text-center mt-3">
+          <v-icon color="red" size="30">mdi-alert-circle</v-icon>
+          <p class="mt-4 text-body-2">{{ loginErro }}</p>
+          <v-btn
+            color="red"
+            class="mt-2"
+            variant="text"
+            @click="fecharDialogErro"
+            >Fechar</v-btn
+          >
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <escolher-perfil
+      v-if="mostrarEscolhaPerfil"
+      v-model="mostrarEscolhaPerfil"
+      :roles="useRoles"
+      @escolhido="entrarComo"
+    />
+  </div>
 </template>
 
 <script>
@@ -75,7 +85,7 @@ export default {
   methods: {
     async handleLogin() {
       try {
-        const response = await axios.post("http://localhost:8000/api/login", {
+        const response = await axios.post("http://localhost:8080/api/login", {
           email: this.email,
           password: this.password,
         });
